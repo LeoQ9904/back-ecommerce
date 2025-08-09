@@ -22,7 +22,14 @@
         "test:e2e": "jest --config ./test/jest-e2e.json",
         "commit": "cz",
         "commitlint": "commitlint --from=HEAD~1",
-        "prepare": "husky"
+        "prepare": "husky",
+        "flow:feature:start": "git flow feature start",
+        "flow:feature:finish": "git flow feature finish",
+        "flow:release:start": "git flow release start",
+        "flow:release:finish": "git flow release finish",
+        "flow:hotfix:start": "git flow hotfix start",
+        "flow:hotfix:finish": "git flow hotfix finish",
+        "flow:status": "git flow status"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",

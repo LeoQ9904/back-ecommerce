@@ -108,6 +108,31 @@ Este proyecto usa [Conventional Commits](https://conventionalcommits.org/). Los 
 feat(auth): add JWT authentication system
 ```
 
+### Git Flow
+
+Este proyecto utiliza **Git Flow** para organizar el desarrollo:
+
+- **`master`**: Rama de producción (código estable)
+- **`develop`**: Rama de desarrollo (integración continua)
+- **`feature/*`**: Nuevas características
+- **`release/*`**: Preparación de versiones
+- **`hotfix/*`**: Correcciones urgentes
+
+Ver [GIT-FLOW.md](./GIT-FLOW.md) para documentación completa.
+
+#### Comandos básicos:
+
+```bash
+# Iniciar nueva característica
+git flow feature start mi-feature
+
+# Finalizar característica
+git flow feature finish mi-feature
+
+# Ver estado de Git Flow
+npm run flow:status
+```
+
 ### Pre-commit Hooks
 
 Antes de cada commit se ejecutará automáticamente:
