@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: www_mongo_service
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secret
+      MONGO_INITDB_DATABASE: ecommerce
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ecommerce_net
+    restart: unless-stopped 
+
+  api:
+    build: .
+    container_name: www_back_ecommerce
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run start:dev
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce_net
+    restart: unless-stopped
+
+networks:
+  ecommerce_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
