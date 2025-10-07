@@ -1,10 +1,17 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { env } from './config/env';
 
 async function bootstrap(): Promise<void> {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+    // Servir archivos estáticos
+    app.useStaticAssets('uploads', {
+        prefix: '/uploads/',
+    });
 
     // Configurar validación global
     app.useGlobalPipes(
@@ -20,11 +27,13 @@ async function bootstrap(): Promise<void> {
 
     // Configuración de Swagger
     const config = new DocumentBuilder()
-        .setTitle('E-commerce API')
-        .setDescription('API para sistema de e-commerce')
+        .setTitle(env.NAME_APPLICATION)
+        .setDescription(env.DESCRIPTION_APPLICATION)
         .setVersion('1.0')
+        .addTag('Categories', 'Gestión de categorías de la tienda')
         .addTag('Products', 'Gestión de productos')
-        .addTag('Auth', 'Autenticación y autorización')
+        .addTag('Carts', 'Gestión de carritos de compra')
+        .addTag('Uploads', 'Cargar imágenes al sistema')
         .addBearerAuth(
             {
                 type: 'http',
@@ -37,14 +46,11 @@ async function bootstrap(): Promise<void> {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document, {
-        customSiteTitle: 'E-commerce API Documentation',
+        customSiteTitle: `${env.NAME_APPLICATION} Documentation`,
         customfavIcon: '/favicon.ico',
         customCss: '.swagger-ui .topbar { display: none }',
     });
 
-    const port = process.env.PORT || 3000;
-    await app.listen(port);
-    console.log(`🚀 Aplicación ejecutándose en puerto ${port}`);
-    console.log(`📚 Documentación Swagger disponible en: http://localhost:${port}/api/docs`);
+    await app.listen(env.PORT);
 }
 void bootstrap();

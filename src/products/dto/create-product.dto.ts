@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsArray,
+    IsBoolean,
     IsNotEmpty,
     IsNumber,
     IsOptional,
@@ -127,4 +128,18 @@ export class CreateProductDto {
     @IsOptional()
     @IsString()
     brand?: string;
+
+    @ApiProperty({
+        description: 'Marcar producto como destacado',
+        example: false,
+    })
+    @IsBoolean()
+    popular: boolean;
+
+    @ApiProperty({
+        description: 'Marcar producto como nuevo.',
+        example: true,
+    })
+    @IsBoolean()
+    nuevo: boolean;
 }

@@ -1,358 +1,181 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { CategoryService } from '../categories/categories.service';
 import { Product, ProductDocument } from './schemas/product.schema';
+import { defaultProducts } from './schemas/seed-data';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
     constructor(
-        @InjectModel(Product.name) private productModel: Model<ProductDocument>
+        @InjectModel(Product.name) private readonly productModel: Model<ProductDocument>,
+        private readonly categoryService: CategoryService
     ) {}
 
-    async create(createProductDto: CreateProductDto): Promise<Product> {
-        try {
-            const product = new this.productModel(createProductDto);
-            return await product.save();
-        } catch (error) {
-            if (error.code === 11000) {
-                throw new BadRequestException('El SKU ya existe');
-            }
-            throw new BadRequestException('Error al crear el producto');
-        }
-    }
-
-    async findAll(page: number = 1, limit: number = 10, filters?: any): Promise<{
-        products: Product[],
-        total: number,
-        page: number,
-        totalPages: number,
-        hasNext: boolean,
-        hasPrev: boolean
-    }> {
-        const skip = (page - 1) * limit;
-        const query: FilterQuery<ProductDocument> = { isActive: true };
-
-        // Aplicar filtros adicionales
-        if (filters?.category) {
-            query.category = new RegExp(filters.category, 'i');
-        }
-        if (filters?.brand) {
-            query.brand = new RegExp(filters.brand, 'i');
-        }
-        if (filters?.minPrice || filters?.maxPrice) {
-            query.price = {};
-            if (filters.minPrice) query.price.$gte = filters.minPrice;
-            if (filters.maxPrice) query.price.$lte = filters.maxPrice;
-        }
-        if (filters?.inStock) {
-            query.stock = { $gt: 0 };
-        }
-
-        const [products, total] = await Promise.all([
-            this.productModel
-                .find(query)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            this.productModel.countDocuments(query)
-        ]);
-
-        const totalPages = Math.ceil(total / limit);
-
+    /**
+     * createFlexibleSearchQuery, function que crea una query flexible para búsqueda
+     * @param searchTerm string Término de búsqueda
+     * @returns object Query object para MongoDB
+     */
+    private createFlexibleSearchQuery(searchTerm: string): object {
         return {
-            products,
-            total,
-            page,
-            totalPages,
-            hasNext: page < totalPages,
-            hasPrev: page > 1
-        };
-    }
-
-    async findOne(id: string): Promise<Product> {
-        const product = await this.productModel
-            .findOne({ _id: id, isActive: true })
-            .lean()
-            .exec();
-            
-        if (!product) {
-            throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-        }
-        
-        return product;
-    }
-
-    async findBySku(sku: string): Promise<Product> {
-        const product = await this.productModel
-            .findOne({ sku, isActive: true })
-            .lean()
-            .exec();
-            
-        if (!product) {
-            throw new NotFoundException(`Producto con SKU ${sku} no encontrado`);
-        }
-        
-        return product;
-    }
-
-    async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
-        try {
-            const product = await this.productModel
-                .findOneAndUpdate(
-                    { _id: id, isActive: true },
-                    updateProductDto,
-                    { new: true, runValidators: true }
-                )
-                .lean()
-                .exec();
-
-            if (!product) {
-                throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-            }
-
-            return product;
-        } catch (error) {
-            if (error.code === 11000) {
-                throw new BadRequestException('El SKU ya existe');
-            }
-            if (error.name === 'ValidationError') {
-                throw new BadRequestException('Datos de producto inválidos');
-            }
-            throw error;
-        }
-    }
-
-    async remove(id: string): Promise<void> {
-        const result = await this.productModel
-            .findOneAndUpdate(
-                { _id: id, isActive: true },
-                { isActive: false },
-                { new: true }
-            )
-            .lean()
-            .exec();
-
-        if (!result) {
-            throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-        }
-    }
-
-    async hardDelete(id: string): Promise<void> {
-        const result = await this.productModel
-            .findByIdAndDelete(id)
-            .exec();
-
-        if (!result) {
-            throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-        }
-    }
-
-    async search(searchTerm: string, page: number = 1, limit: number = 10): Promise<{
-        products: Product[],
-        total: number,
-        page: number,
-        totalPages: number
-    }> {
-        const skip = (page - 1) * limit;
-        
-        const searchQuery = {
-            isActive: true,
             $or: [
-                { name: new RegExp(searchTerm, 'i') },
-                { description: new RegExp(searchTerm, 'i') },
-                { category: new RegExp(searchTerm, 'i') },
-                { brand: new RegExp(searchTerm, 'i') },
-                { tags: { $in: [new RegExp(searchTerm, 'i')] } }
-            ]
+                // Búsqueda exacta (case insensitive)
+                { name: { $regex: searchTerm, $options: 'i' } },
+                { category: { $regex: searchTerm, $options: 'i' } },
+                // Búsqueda sin espacios
+                { name: { $regex: searchTerm.replace(/\s+/g, ''), $options: 'i' } },
+                { category: { $regex: searchTerm.replace(/\s+/g, ''), $options: 'i' } },
+                // Búsqueda con caracteres intercambiables para acentos comunes
+                {
+                    name: {
+                        $regex: searchTerm
+                            .replace(/[aáàäâ]/gi, '[aáàäâ]')
+                            .replace(/[eéèëê]/gi, '[eéèëê]')
+                            .replace(/[iíìïî]/gi, '[iíìïî]')
+                            .replace(/[oóòöô]/gi, '[oóòöô]')
+                            .replace(/[uúùüû]/gi, '[uúùüû]')
+                            .replace(/\s+/g, '\\s*'),
+                        $options: 'i',
+                    },
+                },
+                {
+                    category: {
+                        $regex: searchTerm
+                            .replace(/[aáàäâ]/gi, '[aáàäâ]')
+                            .replace(/[eéèëê]/gi, '[eéèëê]')
+                            .replace(/[iíìïî]/gi, '[iíìïî]')
+                            .replace(/[oóòöô]/gi, '[oóòöô]')
+                            .replace(/[uúùüû]/gi, '[uúùüû]')
+                            .replace(/\s+/g, '\\s*'),
+                        $options: 'i',
+                    },
+                },
+            ],
         };
-
-        const [products, total] = await Promise.all([
-            this.productModel
-                .find(searchQuery)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            this.productModel.countDocuments(searchQuery)
-        ]);
-
-        return {
-            products,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit)
-        };
     }
 
-    async getLowStockProducts(threshold: number = 10): Promise<Product[]> {
-        return this.productModel
-            .find({
-                isActive: true,
-                stock: { $lte: threshold, $gt: 0 }
-            })
-            .sort({ stock: 1 })
-            .lean()
-            .exec();
+    /**
+     * onModuleInit,  function para crear la información necesaria para que funcione el aplicativo.
+     */
+    async onModuleInit(): Promise<void> {
+        await this.seedDefaultProducts();
     }
 
-    async getOutOfStockProducts(): Promise<Product[]> {
-        return this.productModel
-            .find({
-                isActive: true,
-                stock: 0
-            })
-            .sort({ updatedAt: -1 })
-            .lean()
-            .exec();
-    }
-
-    async updateStock(id: string, quantity: number, operation: 'add' | 'subtract' | 'set' = 'set'): Promise<Product> {
-        let updateQuery: any;
-
-        switch (operation) {
-            case 'add':
-                updateQuery = { $inc: { stock: Math.abs(quantity) } };
-                break;
-            case 'subtract':
-                updateQuery = { $inc: { stock: -Math.abs(quantity) } };
-                break;
-            case 'set':
-            default:
-                updateQuery = { stock: quantity };
-                break;
+    /**
+     * seedDefaultProducts, function que contiene el listado de array de los productos nuevos a crear.
+     */
+    private async seedDefaultProducts(): Promise<void> {
+        const existingProducts = await this.productModel.countDocuments();
+        if (existingProducts > 0) {
+            return;
         }
 
-        const product = await this.productModel
-            .findOneAndUpdate(
-                { _id: id, isActive: true },
-                updateQuery,
-                { new: true, runValidators: true }
-            )
-            .lean()
-            .exec();
-
-        if (!product) {
-            throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-        }
-
-        if (product.stock < 0) {
-            throw new BadRequestException('No se puede tener stock negativo');
-        }
-
-        return product;
+        await this.productModel.insertMany(defaultProducts);
     }
 
-    async getStatistics() {
-        const pipeline = [
-            { $match: { isActive: true } },
-            {
-                $group: {
-                    _id: null,
-                    totalProducts: { $sum: 1 },
-                    totalValue: { $sum: { $multiply: ['$price', '$stock'] } },
-                    averagePrice: { $avg: '$price' },
-                    totalStock: { $sum: '$stock' },
-                    maxPrice: { $max: '$price' },
-                    minPrice: { $min: '$price' }
+    /**
+     * findAll, function que retorna el listado de todos los productos.
+     * @returns ProductDocument[] Listado de productos
+     */
+    public async findAll(): Promise<ProductDocument[]> {
+        return await this.productModel.find();
+    }
+
+    /**
+     * findAllPopular, function que retorna el listado de productos populares.
+     * @returns ProductDocument[] Listado de productos populares
+     */
+    public async findAllPopular(): Promise<ProductDocument[]> {
+        return await this.productModel.find({ popular: true });
+    }
+
+    /**
+     * findByCategory, function que retorna el listado de productos por categoría o nombre.
+     * @param category string Categoría del producto
+     * @param search string Término de búsqueda para nombre o categoría
+     * @returns ProductDocument[] Listado de productos por categoría o nombre
+     */
+    public async findByCategory(category: string, search?: string): Promise<ProductDocument[]> {
+        // Si la categoría es "todas" o "todos", buscar en todos los productos
+        if (category.toLowerCase() === 'todas' || category.toLowerCase() === 'todos') {
+            if (search) {
+                // Usar búsqueda flexible para "todas las categorías"
+                return await this.productModel.find(this.createFlexibleSearchQuery(search));
+            }
+            return await this.findAll();
+        }
+
+        // Construir query base para la categoría específica
+        let query: FilterQuery<ProductDocument> = { category };
+
+        // Si hay término de búsqueda, agregar filtros adicionales con búsqueda flexible
+        if (search) {
+            const flexibleSearchQuery = this.createFlexibleSearchQuery(search);
+            query = {
+                $and: [{ category }, flexibleSearchQuery],
+            };
+        }
+
+        // Buscar productos con la query construida
+        let data = await this.productModel.find(query);
+
+        // Si no hay resultados y NO hay término de búsqueda,
+        // intentar buscar en subcategorías
+        if (data.length === 0 && !search) {
+            const nameCategory = await this.categoryService.findCategoryByName(category);
+            if (!nameCategory) {
+                return [];
+            }
+
+            const categories = await this.categoryService.findByParentId(
+                nameCategory._id.toString()
+            );
+
+            if (categories && categories.length > 0) {
+                data = await this.productModel.find({
+                    category: { $in: categories.map(c => c.name) },
+                });
+            }
+        }
+
+        // Si no hay resultados y SÍ hay término de búsqueda,
+        // buscar en subcategorías con el término de búsqueda flexible
+        if (data.length === 0 && search) {
+            const nameCategory = await this.categoryService.findCategoryByName(category);
+            if (nameCategory) {
+                const categories = await this.categoryService.findByParentId(
+                    nameCategory._id.toString()
+                );
+
+                if (categories && categories.length > 0) {
+                    const categoryNames = categories.map(c => c.name);
+                    const flexibleSearchQuery = this.createFlexibleSearchQuery(search);
+                    data = await this.productModel.find({
+                        $and: [{ category: { $in: categoryNames } }, flexibleSearchQuery],
+                    });
                 }
             }
-        ];
+        }
 
-        const [stats] = await this.productModel.aggregate(pipeline);
-        
-        const [categories, brands, lowStockCount, outOfStockCount] = await Promise.all([
-            this.productModel.distinct('category', { isActive: true }),
-            this.productModel.distinct('brand', { isActive: true }),
-            this.productModel.countDocuments({ isActive: true, stock: { $lte: 10, $gt: 0 } }),
-            this.productModel.countDocuments({ isActive: true, stock: 0 })
-        ]);
-
-        return {
-            totalProducts: stats?.totalProducts || 0,
-            totalValue: stats?.totalValue || 0,
-            averagePrice: stats?.averagePrice || 0,
-            totalStock: stats?.totalStock || 0,
-            maxPrice: stats?.maxPrice || 0,
-            minPrice: stats?.minPrice || 0,
-            categories: categories.length,
-            categoryList: categories,
-            brands: brands.length,
-            brandList: brands,
-            lowStockProducts: lowStockCount,
-            outOfStockProducts: outOfStockCount
-        };
+        return data;
     }
 
-    async getTopProducts(limit: number = 10): Promise<Product[]> {
-        return this.productModel
-            .find({ isActive: true })
-            .sort({ rating: -1, reviewCount: -1 })
-            .limit(limit)
-            .lean()
-            .exec();
+    /**
+     * findAllDiscounted, function que retorna el listado de productos con descuento.
+     * @returns ProductDocument[] Listado de productos con descuento
+     */
+    public async findAllDiscounted(): Promise<ProductDocument[]> {
+        const data = await this.productModel.find({ discount: { $gt: 0 } });
+        return data;
     }
 
-    async getProductsByCategory(category: string, page: number = 1, limit: number = 10): Promise<{
-        products: Product[],
-        total: number,
-        page: number,
-        totalPages: number
-    }> {
-        const skip = (page - 1) * limit;
-        const query = { isActive: true, category: new RegExp(category, 'i') };
-
-        const [products, total] = await Promise.all([
-            this.productModel
-                .find(query)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            this.productModel.countDocuments(query)
-        ]);
-
-        return {
-            products,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit)
-        };
-    }
-
-    async getProductsByPriceRange(minPrice: number, maxPrice: number, page: number = 1, limit: number = 10): Promise<{
-        products: Product[],
-        total: number,
-        page: number,
-        totalPages: number
-    }> {
-        const skip = (page - 1) * limit;
-        const query = {
-            isActive: true,
-            price: { $gte: minPrice, $lte: maxPrice }
-        };
-
-        const [products, total] = await Promise.all([
-            this.productModel
-                .find(query)
-                .sort({ price: 1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            this.productModel.countDocuments(query)
-        ]);
-
-        return {
-            products,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit)
-        };
+    /**
+     * findNewProduct, function que retorna el listado de productos marcados como nuevos.
+     * @returns ProductDocument[] Listado de productos nuevos
+     */
+    public async findNewProduct(): Promise<ProductDocument[]> {
+        const data = await this.productModel.find({ nuevo: true });
+        return data;
     }
 }

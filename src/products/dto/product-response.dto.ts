@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductDocument } from '../schemas/product.schema';
 
 export class ProductResponseDto {
     @ApiProperty({
-        description: 'ID único del producto',
-        example: '507f1f77bcf86cd799439011',
+        description: 'Id del producto',
+        example: '5',
     })
     _id: string;
 
@@ -37,11 +38,23 @@ export class ProductResponseDto {
     })
     category: string;
 
+    @ApiProperty({
+        description: 'Unidad de medida',
+        example: 'lb',
+    })
+    unit: string;
+
     @ApiPropertyOptional({
         description: 'URL de la imagen',
         example: 'https://example.com/image.jpg',
     })
     imageUrl?: string;
+
+    @ApiPropertyOptional({
+        description: 'URLs de imágenes',
+        example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+    })
+    images?: string[];
 
     @ApiProperty({
         description: 'Estado activo del producto',
@@ -86,22 +99,34 @@ export class ProductResponseDto {
     brand?: string;
 
     @ApiProperty({
-        description: 'Fecha de creación',
-        example: '2024-01-15T10:30:00.000Z',
+        description: 'Marcar producto como destacado',
+        example: false,
     })
-    createdAt: Date;
+    popular: boolean;
 
     @ApiProperty({
-        description: 'Fecha de última actualización',
-        example: '2024-01-20T15:45:00.000Z',
+        description: 'Marcar producto como nuevo',
+        example: false,
     })
-    updatedAt: Date;
+    nuevo: boolean;
 
-    @ApiPropertyOptional({
-        description: 'Fecha de eliminación (soft delete)',
-        example: null,
-    })
-    deletedAt?: Date;
+    constructor(product: ProductDocument) {
+        this._id = String(product._id);
+        this.name = product.name;
+        this.description = product.description;
+        this.price = product.price;
+        this.stock = product.stock;
+        this.category = product.category;
+        this.unit = product.unit;
+        this.imageUrl = product.imageUrl;
+        this.images = product.images;
+        this.isActive = product.isActive;
+        this.tags = product.tags;
+        this.discount = product.discount;
+        this.brand = product.brand;
+        this.popular = product.popular;
+        this.nuevo = product.nuevo ?? false;
+    }
 }
 
 export class PaginatedProductsResponseDto {

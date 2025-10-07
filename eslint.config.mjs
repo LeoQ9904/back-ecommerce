@@ -44,7 +44,7 @@ export default tseslint.config(
             '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
             '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
-            // General JavaScript/Node.js rules
+            // General JavaScript/Node.js rules (solo reglas de calidad, no de estilo)
             'no-console': 'warn',
             'no-debugger': 'error',
             'no-duplicate-imports': 'error',
@@ -55,15 +55,8 @@ export default tseslint.config(
             'prefer-arrow-callback': 'error',
             'prefer-template': 'error',
 
-            // Estilo de código
-            quotes: ['error', 'single'],
-            semi: ['error', 'always'],
-            'comma-dangle': ['error', 'always-multiline'],
-            indent: ['error', 4, { SwitchCase: 1 }],
-            'max-len': ['error', { code: 100, ignoreUrls: true, ignoreStrings: true }],
-            'no-multiple-empty-lines': ['error', { max: 2, maxEOF: 1 }],
-            'eol-last': ['error', 'always'],
-            'no-trailing-spaces': 'error',
+            // Prettier se encarga del formato, estas reglas están deshabilitadas para evitar conflictos
+            // quotes, semi, comma-dangle, indent, max-len, etc. son manejadas por Prettier
         },
     },
     {
@@ -76,5 +69,5 @@ export default tseslint.config(
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
         },
-    }
+    },
 );
