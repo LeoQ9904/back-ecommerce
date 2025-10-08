@@ -52,9 +52,6 @@ export class Customer {
 
 export const CustomerSchema = SchemaFactory.createForClass(Customer);
 
-CustomerSchema.index({ firebaseUid: 1 });
-CustomerSchema.index({ email: 1 });
-
 CustomerSchema.set('toJSON', {
     virtuals: true,
 });

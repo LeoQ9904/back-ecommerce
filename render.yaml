@@ -1,0 +1,30 @@
+services:
+    - type: web
+      name: back-ecommerce-api
+      runtime: docker
+      repo: https://github.com/LeoQ9904/back-ecommerce.git # Cambia por tu repositorio
+      branch: master
+      region: oregon
+      plan: free
+      buildCommand: ''
+      startCommand: ''
+      healthCheckPath: '/health'
+      envVars:
+          - key: NODE_ENV
+            value: production
+          - key: NAME_APPLICATION
+            value: 'Back E-commerce API'
+          - key: DESCRIPTION_APPLICATION
+            value: 'API REST para sistema de e-commerce'
+          - key: JWT_SECRET
+            generateValue: true
+          - key: JWT_EXPIRES_IN
+            value: '24h'
+          - key: DEFAULT_PAGE_SIZE
+            value: '10'
+          - key: MAX_PAGE_SIZE
+            value: '100'
+          - key: MAX_FILE_SIZE
+            value: '5MB'
+          - key: UPLOAD_PATH
+            value: './uploads'

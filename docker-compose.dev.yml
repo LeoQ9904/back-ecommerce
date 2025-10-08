@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+    mongodb:
+        image: mongo:7.0
+        container_name: www_mongo_service_dev
+        ports:
+            - '27017:27017'
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: secret
+            MONGO_INITDB_DATABASE: ecommerce
+        volumes:
+            - mongo_data_dev:/data/db
+        networks:
+            - ecommerce_net_dev
+        restart: unless-stopped
+        healthcheck:
+            test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: builder
+        container_name: www_back_ecommerce_dev
+        ports:
+            - '3000:3000'
+            - '9229:9229' # Puerto para debugging
+        volumes:
+            - .:/app
+            - /app/node_modules
+            - uploads_data_dev:/app/uploads
+        command: pnpm run start:dev
+        env_file:
+            - .env
+        environment:
+            - NODE_ENV=development
+            - MONGODB_URI=mongodb://root:secret@mongodb:27017/ecommerce?authSource=admin
+        depends_on:
+            mongodb:
+                condition: service_healthy
+        networks:
+            - ecommerce_net_dev
+        restart: unless-stopped
+
+networks:
+    ecommerce_net_dev:
+        driver: bridge
+
+volumes:
+    mongo_data_dev:
+    uploads_data_dev:

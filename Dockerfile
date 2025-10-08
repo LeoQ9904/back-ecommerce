@@ -1,38 +1,56 @@
 # Etapa 1: Construcción (build)
-# Usa una imagen base completa para compilar la aplicación.
 FROM node:20-alpine AS builder
 
+# Instalar pnpm globalmente
+RUN npm install -g pnpm
+
 WORKDIR /app
 
-# Copia los archivos de configuración de dependencias para aprovechar el caché.
-COPY package*.json ./
-# Instala todas las dependencias, incluyendo las de desarrollo, para la compilación.
-RUN npm install
+# Copiar archivos de configuración de dependencias
+COPY package.json pnpm-lock.yaml ./
 
-# Copia el código fuente.
+# Instalar dependencias usando pnpm
+RUN pnpm install --frozen-lockfile
+
+# Copiar código fuente
 COPY . .
 
-# Ejecuta el comando de compilación de NestJS.
-RUN npm run build
+# Compilar aplicación
+RUN pnpm run build
 
-# Etapa 2: Producción (production)
-# Usa una imagen base ligera para el contenedor final.
+# Etapa 2: Producción
 FROM node:20-alpine AS production
+
+# Instalar pnpm en la imagen de producción
+RUN npm install -g pnpm
+
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
 
 WORKDIR /app
 
-# Solo copia las dependencias de producción.
-COPY --from=builder /app/package*.json ./
-RUN npm install --only=production
+# Copiar archivos de configuración
+COPY package.json pnpm-lock.yaml ./
 
-# Copia los archivos compilados desde la etapa de construcción.
-COPY --from=builder /app/dist ./dist
+# Instalar solo dependencias de producción
+RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 
-# Configura la aplicación para producción.
-ENV NODE_ENV production
+# Copiar aplicación compilada
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 
-# Indica el puerto de la aplicación.
-EXPOSE 3000
+# Crear directorio para uploads y asignar permisos
+RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
 
-# Comando para iniciar la aplicación en producción.
+# Cambiar a usuario no-root
+USER nestjs
+
+# Variables de entorno
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Exponer puerto (Render usa PORT dinámico)
+EXPOSE $PORT
+
+# Comando de inicio
 CMD ["node", "dist/main.js"]
