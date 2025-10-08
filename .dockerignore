@@ -62,7 +62,7 @@ pids
 # Prettier cache
 .prettiercache
 
-# Husky
+# Husky (development tool)
 .husky
 
 # Uploads (local development)
@@ -77,3 +77,14 @@ test
 # Development files
 src/**/*.spec.ts
 src/**/*.test.ts
+
+# Package manager stores
+.pnpm-store
+.yarn
+.npm
+
+# Commitizen
+.cz-config.js
+
+# Lint staged
+.lintstagedrc*

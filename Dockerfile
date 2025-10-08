@@ -9,7 +9,7 @@ WORKDIR /app
 # Copiar archivos de configuración de dependencias
 COPY package.json pnpm-lock.yaml ./
 
-# Instalar dependencias usando pnpm
+# Instalar todas las dependencias para el build
 RUN pnpm install --frozen-lockfile
 
 # Copiar código fuente
@@ -21,20 +21,25 @@ RUN pnpm run build
 # Etapa 2: Producción
 FROM node:20-alpine AS production
 
-# Instalar pnpm en la imagen de producción
-RUN npm install -g pnpm
+# Instalar pnpm y utilidades necesarias
+RUN npm install -g pnpm && \
+    apk add --no-cache wget
 
 # Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nestjs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001
 
 WORKDIR /app
 
 # Copiar archivos de configuración
 COPY package.json pnpm-lock.yaml ./
 
-# Instalar solo dependencias de producción
-RUN pnpm install --prod --frozen-lockfile && pnpm store prune
+# Instalar solo dependencias de producción (sin ejecutar scripts de prepare/postinstall)
+ENV HUSKY=0
+ENV CI=true
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts && \
+    pnpm store prune && \
+    rm -rf ~/.pnpm-store
 
 # Copiar aplicación compilada
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
@@ -52,5 +57,9 @@ ENV PORT=3000
 # Exponer puerto (Render usa PORT dinámico)
 EXPOSE $PORT
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
+
 # Comando de inicio
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
