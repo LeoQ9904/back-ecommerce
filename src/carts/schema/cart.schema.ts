@@ -1,13 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { Document, Types } from 'mongoose';
-import { Product, ProductSchema } from '../../products/schemas/product.schema';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ _id: false })
 export class CartItem {
-    @ApiProperty({ description: 'Product data', type: Product })
-    @Prop({ required: true, type: ProductSchema })
-    product: Product;
+    @ApiProperty({ description: 'Product data' })
+    @Prop({ required: true, type: MongooseSchema.Types.Mixed })
+    product: Record<string, unknown>;
 
     @ApiProperty({ description: 'Quantity of the product', minimum: 1, example: 2 })
     @Prop({ required: true, min: 1 })
