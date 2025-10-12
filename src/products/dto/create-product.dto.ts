@@ -142,4 +142,29 @@ export class CreateProductDto {
     })
     @IsBoolean()
     nuevo: boolean;
+
+    @ApiProperty({
+        description: 'Unidad de medida del producto',
+        example: 'pieza',
+    })
+    @IsNotEmpty()
+    @IsString()
+    unit: string;
+
+    @ApiProperty({
+        description: 'Estado activo del producto',
+        example: true,
+    })
+    @IsBoolean()
+    isActive: boolean;
+
+    @ApiPropertyOptional({
+        description: 'URLs adicionales de imágenes del producto',
+        example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+        type: [String],
+    })
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
+    images?: string[];
 }

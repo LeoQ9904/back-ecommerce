@@ -14,10 +14,10 @@ export class Address {
     @Prop({ required: true, trim: true })
     state: string;
 
-    @Prop({ required: true, trim: true })
+    @Prop({ required: false, trim: true })
     zipCode: string;
 
-    @Prop({ required: true, trim: true })
+    @Prop({ required: false, trim: true })
     country: string;
 
     @Prop({ default: false })

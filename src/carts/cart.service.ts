@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CreateCartDto } from './dto/create-cart.dto';
-import { UpdateCartDto } from './dto/update-cart';
+import { CreateOrderDto } from './dto/create-cart.dto';
+import { UpdateCartDto } from './dto/update-cart.dto';
 import { Cart, CartDocument } from './schema/cart.schema';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class CartService {
      * @param cartData Datos del carrito a crear
      * @returns El carrito creado
      */
-    async createCart(cartData: CreateCartDto): Promise<Cart> {
+    async createCart(cartData: CreateOrderDto): Promise<Cart> {
         const createdCart = new this.cartModel(cartData);
         return createdCart.save();
     }
@@ -24,8 +24,8 @@ export class CartService {
      * @param userId ID del usuario
      * @returns El carrito encontrado o null si no existe
      */
-    async findByUserId(userId: string): Promise<Cart | null> {
-        return this.cartModel.findOne({ user_id: userId }).exec();
+    async findByUserId(userId: string): Promise<Cart[] | null> {
+        return this.cartModel.find({ user_id: userId }).exec();
     }
 
     /**
@@ -116,66 +116,6 @@ export class CartService {
         }
 
         return deletedCart;
-    }
-
-    /**
-     * Agrega un producto al carrito o actualiza la cantidad si ya existe.
-     * @param userId ID del usuario
-     * @param productData Datos del producto
-     * @param quantity Cantidad del producto
-     * @returns El carrito actualizado
-     */
-    async addProductToCart(
-        userId: string,
-        productData: Record<string, unknown>,
-        quantity: number
-    ): Promise<Cart> {
-        let cart = await this.findByUserId(userId);
-
-        if (!cart) {
-            // Crear nuevo carrito si no existe
-            const newCartData = {
-                user_id: userId,
-                items: [{ product: productData, quantity }],
-                totalDiscount: 0,
-                totalPrice: (productData.price as number) * quantity,
-            };
-            cart = await this.createCart(newCartData);
-        } else {
-            // Verificar si el producto ya existe en el carrito
-            const existingItemIndex = cart.items.findIndex(
-                item => item.product.name === productData.name
-            );
-
-            const updateData: UpdateCartDto = {
-                items: [...cart.items],
-                totalPrice: 0,
-            };
-
-            if (existingItemIndex > -1) {
-                // Actualizar cantidad si el producto ya existe
-                if (updateData.items) {
-                    updateData.items[existingItemIndex].quantity += quantity;
-                }
-            } else {
-                // Agregar nuevo producto
-                if (updateData.items) {
-                    updateData.items.push({ product: productData, quantity });
-                }
-            }
-
-            // Recalcular el precio total
-            updateData.totalPrice =
-                updateData.items?.reduce(
-                    (total, item) => total + (item.product.price as number) * item.quantity,
-                    0
-                ) ?? 0;
-
-            // Guardar los cambios
-            cart = await this.updateCartByUserId(userId, updateData);
-        }
-
-        return cart;
     }
 
     /**

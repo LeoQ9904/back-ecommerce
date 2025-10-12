@@ -1,25 +1,27 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ResponseInterceptor } from '../common/interceptors/response.interceptor';
 import { CartService } from './cart.service';
-import { CreateCartDto } from './dto/create-cart.dto';
-import { UpdateCartDto } from './dto/update-cart';
+import { CreateOrderDto } from './dto/create-cart.dto';
+import { UpdateCartDto } from './dto/update-cart.dto';
 import { Cart } from './schema/cart.schema';
 
 @ApiTags('Carts')
 @Controller('cart')
+@UseInterceptors(ResponseInterceptor)
 export class CartController {
     constructor(private readonly cartService: CartService) {}
 
     @Post()
     @ApiOperation({ summary: 'Crear nuevo Cart' })
-    @ApiBody({ type: CreateCartDto })
+    @ApiBody({ type: CreateOrderDto })
     @ApiResponse({
         status: 201,
         description: 'Cart creado exitosamente',
         type: Cart,
     })
     @ApiResponse({ status: 400, description: 'Solicitud incorrecta' })
-    async createCart(@Body() cartData: CreateCartDto): Promise<Cart> {
+    async createCart(@Body() cartData: CreateOrderDto): Promise<Cart> {
         return this.cartService.createCart(cartData);
     }
 
@@ -43,7 +45,7 @@ export class CartController {
     })
     @ApiResponse({ status: 200, description: 'Cart encontrado', type: Cart })
     @ApiResponse({ status: 404, description: 'Cart no encontrado' })
-    async getCartByUserId(@Param('userId') userId: string): Promise<Cart | null> {
+    async getCartByUserId(@Param('userId') userId: string): Promise<Cart[] | null> {
         return this.cartService.findByUserId(userId);
     }
 
@@ -54,20 +56,6 @@ export class CartController {
     @ApiResponse({ status: 404, description: 'Cart no encontrado' })
     async getCartById(@Param('id') id: string): Promise<Cart> {
         return this.cartService.findById(id);
-    }
-
-    @Patch(':id')
-    @ApiOperation({ summary: 'Actualizar cart por ID' })
-    @ApiParam({ name: 'id', description: 'ID del cart', type: String })
-    @ApiBody({ type: UpdateCartDto })
-    @ApiResponse({
-        status: 200,
-        description: 'Cart actualizado exitosamente',
-        type: Cart,
-    })
-    @ApiResponse({ status: 404, description: 'Cart no encontrado' })
-    async updateCart(@Param('id') id: string, @Body() updateData: UpdateCartDto): Promise<Cart> {
-        return this.cartService.updateCart(id, updateData);
     }
 
     @Patch('user/:userId')
@@ -119,52 +107,5 @@ export class CartController {
     @ApiResponse({ status: 404, description: 'Cart no encontrado' })
     async deleteCartByUserId(@Param('userId') userId: string): Promise<Cart> {
         return this.cartService.deleteCartByUserId(userId);
-    }
-
-    @Post('user/:userId/add-product')
-    @ApiOperation({ summary: 'Agregar producto al cart' })
-    @ApiParam({
-        name: 'userId',
-        description: 'ID de usuario',
-        type: String,
-    })
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                product: {
-                    type: 'object',
-                    properties: {
-                        name: { type: 'string', example: 'iPhone 14' },
-                        description: { type: 'string', example: 'Latest iPhone model' },
-                        price: { type: 'number', example: 999.99 },
-                        stock: { type: 'number', example: 50 },
-                        category: { type: 'string', example: 'Electronics' },
-                        unit: { type: 'string', example: 'piece' },
-                        imageUrl: { type: 'string', example: 'https://example.com/image.jpg' },
-                        isActive: { type: 'boolean', example: true },
-                        brand: { type: 'string', example: 'Apple' },
-                    },
-                    required: ['name', 'description', 'price', 'stock', 'category', 'unit'],
-                },
-                quantity: {
-                    type: 'number',
-                    minimum: 1,
-                    example: 2,
-                },
-            },
-            required: ['product', 'quantity'],
-        },
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Producto agregado al cart exitosamente',
-        type: Cart,
-    })
-    async addProductToCart(
-        @Param('userId') userId: string,
-        @Body() body: { product: Record<string, unknown>; quantity: number }
-    ): Promise<Cart> {
-        return this.cartService.addProductToCart(userId, body.product, body.quantity);
     }
 }

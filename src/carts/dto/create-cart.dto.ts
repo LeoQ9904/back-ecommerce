@@ -1,33 +1,68 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsString, Min, ValidateNested } from 'class-validator';
-import { CartItemDto } from './cart-product.dto';
+import {
+    ArrayNotEmpty,
+    IsArray,
+    IsMongoId,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    ValidateNested,
+} from 'class-validator';
+import { AddressDto } from '../../customers/dto/create-customer.dto';
+import { CreateProductDto } from '../../products/dto/create-product.dto';
 
-export class CreateCartDto {
-    @ApiProperty({
-        description: 'User ID',
-        example: '507f1f77bcf86cd799439011',
-    })
-    @IsString()
+// DTO para el producto
+class ProductDto extends PartialType(CreateProductDto) {
+    @IsMongoId()
+    @IsNotEmpty()
+    _id: string;
+}
+
+// DTO para cada item del pedido
+class OrderItemDto {
+    @ValidateNested()
+    @Type(() => ProductDto)
+    product: ProductDto;
+
+    @IsNumber()
+    @IsNotEmpty()
+    quantity: number;
+}
+
+// DTO principal del pedido
+export class CreateOrderDto {
+    @IsMongoId()
+    @IsNotEmpty()
     user_id: string;
 
-    @ApiProperty({ description: 'Cart items', type: [CartItemDto] })
     @IsArray()
+    @ArrayNotEmpty()
     @ValidateNested({ each: true })
-    @Type(() => CartItemDto)
-    items: CartItemDto[];
+    @Type(() => OrderItemDto)
+    items: OrderItemDto[];
 
-    @ApiProperty({
-        description: 'Total discount amount',
-        minimum: 0,
-        example: 10.5,
+    @ApiPropertyOptional({
+        description: 'Direcciones del cliente',
+        type: [AddressDto],
+        example: {
+            street: 'Calle 123 #45-67',
+            city: 'Bogotá',
+            state: 'Cundinamarca',
+            zipCode: '110111',
+            country: 'Colombia',
+            isDefault: true,
+        },
     })
-    @IsNumber()
-    @Min(0)
-    totalDiscount: number;
+    @IsOptional()
+    @Type(() => AddressDto)
+    address: AddressDto;
 
-    @ApiProperty({ description: 'Total price', minimum: 0, example: 89.5 })
     @IsNumber()
-    @Min(0)
-    totalPrice: number;
+    @IsOptional()
+    totalDiscount?: number;
+
+    @IsNumber()
+    @IsOptional()
+    totalPrice?: number;
 }

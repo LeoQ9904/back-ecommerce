@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { Document, Schema as MongooseSchema, Types } from 'mongoose';
+import { Address, AddressSchema } from '../../customers/schemas/customer.schema';
 
 @Schema({ _id: false })
 export class CartItem {
@@ -24,6 +25,9 @@ export class Cart {
     @ApiProperty({ description: 'Cart items', type: [CartItem] })
     @Prop({ required: true, type: [CartItem], default: [] })
     items: CartItem[];
+
+    @Prop({ type: AddressSchema, default: {} })
+    address: Address;
 
     @ApiProperty({ description: 'Total discount amount', minimum: 0, example: 10.5 })
     @Prop({ required: true, min: 0, default: 0 })
