@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
     ArrayNotEmpty,
     IsArray,
+    IsEnum,
     IsMongoId,
     IsNotEmpty,
     IsNumber,
@@ -11,6 +12,7 @@ import {
 } from 'class-validator';
 import { AddressDto } from '../../customers/dto/create-customer.dto';
 import { CreateProductDto } from '../../products/dto/create-product.dto';
+import { CartStatus } from '../schema/cart.schema';
 
 // DTO para el producto
 class ProductDto extends PartialType(CreateProductDto) {
@@ -65,4 +67,13 @@ export class CreateOrderDto {
     @IsNumber()
     @IsOptional()
     totalPrice?: number;
+
+    @ApiPropertyOptional({
+        description: 'Estado del carrito',
+        enum: CartStatus,
+        example: CartStatus.ACTIVE,
+    })
+    @IsOptional()
+    @IsEnum(CartStatus)
+    status?: CartStatus;
 }

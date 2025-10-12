@@ -16,6 +16,12 @@ export class CartItem {
 
 export type CartDocument = Cart & Document;
 
+export enum CartStatus {
+    ACTIVE = 'active',
+    COMPLETED = 'completed',
+    CANCELLED = 'cancelled',
+}
+
 @Schema({ timestamps: true })
 export class Cart {
     @ApiProperty({ description: 'User ID', example: '507f1f77bcf86cd799439011' })
@@ -25,6 +31,10 @@ export class Cart {
     @ApiProperty({ description: 'Cart items', type: [CartItem] })
     @Prop({ required: true, type: [CartItem], default: [] })
     items: CartItem[];
+
+    @ApiProperty({ description: 'Cart status', enum: CartStatus, example: CartStatus.ACTIVE })
+    @Prop({ required: true, enum: CartStatus, default: CartStatus.ACTIVE })
+    status: CartStatus;
 
     @Prop({ type: AddressSchema, default: {} })
     address: Address;
