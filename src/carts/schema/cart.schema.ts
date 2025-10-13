@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { Document, Schema as MongooseSchema, Types } from 'mongoose';
+import { CounterSchema } from '../../counter/schemas/counter.schema';
 import { Address, AddressSchema } from '../../customers/schemas/customer.schema';
 
 @Schema({ _id: false })
@@ -46,6 +47,10 @@ export class Cart {
     @ApiProperty({ description: 'Total price', minimum: 0, example: 89.5 })
     @Prop({ required: true, min: 0, default: 0 })
     totalPrice: number;
+
+    @ApiProperty({ description: 'Order number', example: 1001 })
+    @Prop({ unique: true })
+    numberOrder: number;
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart);
@@ -53,3 +58,17 @@ export const CartSchema = SchemaFactory.createForClass(Cart);
 CartSchema.index({ user_id: 1 });
 CartSchema.index({ createdAt: -1 });
 CartSchema.index({ updatedAt: -1 });
+
+// Hook para incrementar automáticamente
+CartSchema.pre<CartDocument>('save', async function (next) {
+    if (this.isNew) {
+        const counterModel = this.db.model('Counter', CounterSchema);
+        const counter = await counterModel.findOneAndUpdate(
+            { model: 'Cart' },
+            { $inc: { seq: 1 } },
+            { new: true, upsert: true }
+        );
+        this.numberOrder = counter.seq;
+    }
+    next();
+});

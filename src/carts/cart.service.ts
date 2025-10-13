@@ -25,7 +25,7 @@ export class CartService {
      * @returns El carrito encontrado o null si no existe
      */
     async findByUserId(userId: string): Promise<Cart[] | null> {
-        return this.cartModel.find({ user_id: userId }).exec();
+        return this.cartModel.find({ user_id: userId }).sort({ createdAt: -1 }).exec();
     }
 
     /**
