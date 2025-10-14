@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copiar archivos de configuración de dependencias
 COPY package.json pnpm-lock.yaml ./
-
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 # Instalar todas las dependencias para el build
 RUN pnpm install --frozen-lockfile
 
