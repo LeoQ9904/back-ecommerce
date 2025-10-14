@@ -1,39 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import { CartDocument } from '../../carts/schema/cart.schema';
 import { env } from '../../config/env';
 
 @Injectable()
 export class EmailService {
     private readonly logger = new Logger(EmailService.name);
-    private readonly transporter: nodemailer.Transporter;
-
     constructor() {
-        this.transporter = nodemailer.createTransport({
-            host: env.SMTP_HOST,
-            port: env.SMTP_PORT,
-            secure: false,
-            auth: {
-                user: env.SMTP_USER,
-                pass: env.SMTP_PASS,
-            },
-        });
+        sgMail.setApiKey(env.SENDGRID_API_KEY);
     }
 
     async sendCartConfirmation(userEmail: string, cartData: CartDocument): Promise<void> {
         try {
-            const mailOptions = {
-                from: env.FROM_EMAIL,
+            const msg = {
                 to: userEmail,
+                from: env.FROM_EMAIL,
                 subject: 'Confirmación de order - Pedido Creado',
                 html: this.generateCartConfirmationTemplate(cartData),
             };
 
-            await this.transporter.sendMail(mailOptions);
+            await sgMail.send(msg);
             this.logger.log(`Correo de confirmación enviado a: ${userEmail}`);
         } catch (error) {
             this.logger.error(`Error enviando correo a ${userEmail}:`, error);
-            throw error;
+            // No lanzar error para no afectar la creación del carrito
         }
     }
 

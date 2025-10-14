@@ -20,9 +20,6 @@ export const env = {
     UPLOAD_PATH: process.env.UPLOAD_PATH ?? './uploads',
 
     // Email configuration
-    SMTP_HOST: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    SMTP_PORT: Number(process.env.SMTP_PORT) || 587,
-    SMTP_USER: process.env.SMTP_USER ?? '',
-    SMTP_PASS: process.env.SMTP_PASS ?? '',
-    FROM_EMAIL: process.env.FROM_EMAIL ?? 'noreply@ecommerce.com',
+    SENDGRID_API_KEY: process.env.SENDGRID_API_KEY ?? '',
+    FROM_EMAIL: process.env.FROM_EMAIL ?? '',
 } as const;
