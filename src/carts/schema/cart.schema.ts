@@ -1,14 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { Document, Schema as MongooseSchema, Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { CounterSchema } from '../../counter/schemas/counter.schema';
 import { Address, AddressSchema } from '../../customers/schemas/customer.schema';
+import { Product } from '../../products/schemas/product.schema';
 
 @Schema({ _id: false })
 export class CartItem {
     @ApiProperty({ description: 'Product data' })
-    @Prop({ required: true, type: MongooseSchema.Types.Mixed })
-    product: Record<string, unknown>;
+    @Prop({ required: true, type: Product })
+    product: Product;
 
     @ApiProperty({ description: 'Quantity of the product', minimum: 1, example: 2 })
     @Prop({ required: true, min: 1 })

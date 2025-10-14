@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { EmailService } from '../common/services/email.service';
+import { Customer, CustomerDocument } from '../customers/schemas/customer.schema';
 import { CreateOrderDto } from './dto/create-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { Cart, CartDocument } from './schema/cart.schema';
 
 @Injectable()
 export class CartService {
-    constructor(@InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>) {}
+    private readonly logger = new Logger(CartService.name);
+
+    constructor(
+        @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
+        @InjectModel(Customer.name) private readonly customerModel: Model<CustomerDocument>,
+        private readonly emailService: EmailService
+    ) {}
 
     /**
      * Crea un nuevo carrito.
@@ -16,7 +24,19 @@ export class CartService {
      */
     async createCart(cartData: CreateOrderDto): Promise<Cart> {
         const createdCart = new this.cartModel(cartData);
-        return createdCart.save();
+        const savedCart = await createdCart.save();
+
+        // Enviar correo de confirmación
+        try {
+            const customer = await this.customerModel.findById(cartData.user_id);
+            if (customer?.email && savedCart) {
+                await this.emailService.sendCartConfirmation(customer.email, savedCart);
+            }
+        } catch (error) {
+            this.logger.error('Error enviando correo de confirmación:', error);
+        }
+
+        return savedCart;
     }
 
     /**
@@ -124,9 +144,6 @@ export class CartService {
      * @returns El precio total calculado
      */
     calculateTotalPrice(cart: Cart): number {
-        return cart.items.reduce(
-            (total, item) => total + (item.product.price as number) * item.quantity,
-            0
-        );
+        return cart.items.reduce((total, item) => total + item.product.price * item.quantity, 0);
     }
 }
